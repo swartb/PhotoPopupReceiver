@@ -1,0 +1,29 @@
+﻿<Window x:Class="PhotoPopupReceiver.PhotoPopupWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="360" Height="260"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        Topmost="True"
+        ShowInTaskbar="False"
+        AllowsTransparency="True"
+        Background="Transparent">
+
+    <Border CornerRadius="14" Background="#EE1E1E1E" Padding="12">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Border CornerRadius="10" Background="#FF000000">
+                <Image x:Name="PreviewImage" Stretch="UniformToFill"/>
+            </Border>
+
+            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+                <Button Content="Kopieer" Padding="14,6" Margin="0,0,8,0" Click="Copy_Click"/>
+                <Button Content="Sluiten" Padding="14,6" Click="Close_Click"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>
