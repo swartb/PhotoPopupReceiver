@@ -9,6 +9,7 @@ using QRCoder;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 
 namespace PhotoPopupReceiver
@@ -19,6 +20,7 @@ namespace PhotoPopupReceiver
     /// and a checkbox that controls whether received photos are automatically copied to
     /// the clipboard.  On startup it launches the HTTP listener via <see cref="PhotoReceiver"/>
     /// and wires up the callback that handles each received photo.
+    /// A language ComboBox allows the user to switch the UI between English and Dutch at runtime.
     /// </summary>
     public partial class MainWindow : Window
     {
@@ -31,14 +33,38 @@ namespace PhotoPopupReceiver
         // The currently open popup notification window, or null if none is shown.
         private PhotoPopupWindow? _popup;
 
+        // The endpoint URL built at startup, stored separately so it can be
+        // reformatted with a different language prefix when the language changes.
+        private string _endpointUrl = string.Empty;
+
         /// <summary>
-        /// Initializes the window and, once the window is fully loaded, generates a
-        /// one-time session token, resolves the machine's LAN IP address, displays the
-        /// full upload endpoint URL, and starts the HTTP listener.
+        /// Initializes the window, sets the correct language in the ComboBox, and once the
+        /// window is fully loaded generates a session token, resolves the LAN IP address,
+        /// and starts the HTTP listener.
         /// </summary>
         public MainWindow()
         {
             InitializeComponent();
+
+            // Populate language ComboBox before applying localization.
+            LanguageComboBox.Items.Add(new ComboBoxItem { Content = "English", Tag = "en" });
+            LanguageComboBox.Items.Add(new ComboBoxItem { Content = "Nederlands", Tag = "nl" });
+
+            // Pre-select the item that matches the current language without firing the handler.
+            foreach (ComboBoxItem item in LanguageComboBox.Items)
+            {
+                if (item.Tag is string tag && tag == LocalizationManager.CurrentCulture.TwoLetterISOLanguageName)
+                {
+                    LanguageComboBox.SelectedItem = item;
+                    break;
+                }
+            }
+
+            // Apply initial localization to all named controls.
+            ApplyLocalization();
+
+            // Keep the UI in sync whenever the language is changed from elsewhere.
+            LocalizationManager.LanguageChanged += (_, __) => Dispatcher.Invoke(ApplyLocalization);
 
             Loaded += async (_, __) =>
             {
@@ -47,17 +73,49 @@ namespace PhotoPopupReceiver
 
                 // Build the full upload URL that the sender (e.g. a mobile app) must call.
                 var ip = GetLanIPv4() ?? "LAN-IP";
-                var url = $"http://{ip}:{_settings.Port}/push-photo?token={_settings.Token}";
+                _endpointUrl = $"http://{ip}:{_settings.Port}/push-photo?token={_settings.Token}";
 
                 // Show the port number in the title bar for quick reference.
-                Title = $"PhotoPopupReceiver - Listening on :{_settings.Port}";
+                Title = string.Format(LocalizationManager.GetString("TitleBarListening"), _settings.Port);
 
                 // Display the full URL in the read-only text box so the user can copy it.
-                UrlText.Text = $"Endpoint:\n{url}";
+                UrlText.Text = $"{LocalizationManager.GetString("EndpointLabel")}\n{_endpointUrl}";
 
                 // Start the HTTP server; OnPhotoSavedAsync is called for every received photo.
                 await _receiver.StartAsync(_settings, OnPhotoSavedAsync);
             };
+        }
+
+        /// <summary>
+        /// Refreshes all localised text in the window using the current culture from
+        /// <see cref="LocalizationManager"/>.  Called once at startup and again whenever
+        /// the user selects a different language.
+        /// </summary>
+        private void ApplyLocalization()
+        {
+            AppTitleText.Text = LocalizationManager.GetString("AppTitle");
+            AutoCopyCheckBox.Content = LocalizationManager.GetString("AutoCopyCheckbox");
+            ShowQrButton.Content = LocalizationManager.GetString("ShowQrButton");
+            LanguageLabelText.Text = LocalizationManager.GetString("LanguageLabel");
+
+            // Only update the URL text box if the URL has already been resolved.
+            if (!string.IsNullOrEmpty(_endpointUrl))
+            {
+                UrlText.Text = $"{LocalizationManager.GetString("EndpointLabel")}\n{_endpointUrl}";
+                Title = string.Format(LocalizationManager.GetString("TitleBarListening"), _settings.Port);
+            }
+        }
+
+        /// <summary>
+        /// Handles the language ComboBox selection change.
+        /// Reads the <c>Tag</c> of the selected item (a two-letter ISO language code) and
+        /// passes it to <see cref="LocalizationManager.SetLanguage"/>, which fires
+        /// <see cref="LocalizationManager.LanguageChanged"/> so all subscribers update.
+        /// </summary>
+        private void LanguageComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (LanguageComboBox.SelectedItem is ComboBoxItem item && item.Tag is string languageCode)
+                LocalizationManager.SetLanguage(languageCode);
         }
 
         /// <summary>

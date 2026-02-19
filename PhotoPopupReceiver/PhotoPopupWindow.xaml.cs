@@ -18,8 +18,10 @@ namespace PhotoPopupReceiver
         private string? _currentPath;
 
         /// <summary>
-        /// Initializes the window and positions it in the bottom-right corner of the
-        /// working area as soon as the layout pass has completed.
+        /// Initializes the window, applies the current localization, and subscribes to
+        /// <see cref="LocalizationManager.LanguageChanged"/> so the button labels update
+        /// automatically if the user switches language while the popup is open.
+        /// The subscription is removed when the window closes to avoid memory leaks.
         /// </summary>
         public PhotoPopupWindow()
         {
@@ -27,6 +29,24 @@ namespace PhotoPopupReceiver
             // PositionBottomRight relies on ActualWidth/ActualHeight, which are only
             // available after the first layout pass triggered by the Loaded event.
             Loaded += (_, __) => PositionBottomRight();
+
+            // Apply button labels for the current language.
+            ApplyLocalization();
+
+            // Keep button labels in sync if the language is switched while the popup is open.
+            LocalizationManager.LanguageChanged += OnLanguageChanged;
+            Closed += (_, __) => LocalizationManager.LanguageChanged -= OnLanguageChanged;
+        }
+
+        // Handler that marshals the localization refresh onto the UI thread.
+        private void OnLanguageChanged(object? sender, EventArgs e) =>
+            Dispatcher.Invoke(ApplyLocalization);
+
+        // Sets the Content of each button from the current resource strings.
+        private void ApplyLocalization()
+        {
+            CopyButton.Content = LocalizationManager.GetString("CopyButton");
+            CloseButton.Content = LocalizationManager.GetString("CloseButton");
         }
 
         /// <summary>

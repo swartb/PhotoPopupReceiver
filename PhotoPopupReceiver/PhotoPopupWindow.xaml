@@ -35,9 +35,9 @@
             <!-- Action buttons aligned to the right, below the photo preview. -->
             <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
                 <!-- Copies the displayed photo to the Windows clipboard. -->
-                <Button Content="Copy" Padding="14,6" Margin="0,0,8,0" Click="Copy_Click"/>
+                <Button x:Name="CopyButton" Padding="14,6" Margin="0,0,8,0" Click="Copy_Click"/>
                 <!-- Dismisses and closes the popup window. -->
-                <Button Content="Close" Padding="14,6" Click="Close_Click"/>
+                <Button x:Name="CloseButton" Padding="14,6" Click="Close_Click"/>
             </StackPanel>
         </Grid>
     </Border>
