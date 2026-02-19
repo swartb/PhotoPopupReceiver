@@ -67,40 +67,20 @@ namespace PhotoPopupReceiver
             // Apply initial localization to all named controls.
             ApplyLocalization();
 
+            RequirePasswordCheckBox.IsChecked = _settings.RequirePassword;
+            PasswordBox.Password = _settings.Password;
+            ValidatePasswordUi();
+
             // Keep the UI in sync whenever the language is changed from elsewhere.
             LocalizationManager.LanguageChanged += (_, __) => Dispatcher.Invoke(ApplyLocalization);
 
             Loaded += async (_, __) =>
             {
-<<<<<<< HEAD
-                // UI init (optioneel: laat defaults zien)
-                RequirePasswordCheckBox.IsChecked = _settings.RequirePassword;
-                PasswordBox.Password = _settings.Password;
-                ValidatePasswordUi();
-
-                // ✅ BELANGRIJK: pak actuele waarden uit UI vóór server start
-                _settings.RequirePassword = RequirePasswordCheckBox.IsChecked == true;
-                _settings.Password = PasswordBox.Password;
-                _settings.RequirePassword = true;
-                _settings.Password = "test123";
-
-                if (_settings.RequirePassword && string.IsNullOrWhiteSpace(_settings.Password))
-                {
-                    ValidatePasswordUi();
-                    return; // niet starten als wachtwoord verplicht is maar leeg
-                }
-=======
                 // Generate a unique token for this session to prevent unauthorised uploads.
                 _settings.Token = Guid.NewGuid().ToString("N");
->>>>>>> 6f5470a66bde67bd6f654e554b2581334c64c41d
 
                 // Build the full upload URL that the sender (e.g. a mobile app) must call.
                 var ip = GetLanIPv4() ?? "LAN-IP";
-<<<<<<< HEAD
-                var url = $"http://{ip}:{_settings.Port}/push-photo";
-                UrlText.Text = $"Endpoint:\n{url}\n\nAuth: {(_settings.RequirePassword ? "wachtwoord vereist (X-Auth header)" : "open")}";
-
-=======
                 _endpointUrl = $"http://{ip}:{_settings.Port}/push-photo?token={_settings.Token}";
 
                 // Show the port number in the title bar for quick reference.
@@ -110,9 +90,8 @@ namespace PhotoPopupReceiver
                 UrlText.Text = $"{LocalizationManager.GetString("EndpointLabel")}\n{_endpointUrl}";
 
                 // Start the HTTP server; OnPhotoSavedAsync is called for every received photo.
->>>>>>> 6f5470a66bde67bd6f654e554b2581334c64c41d
                 await _receiver.StartAsync(_settings, OnPhotoSavedAsync);
-
+                
                 _tray = new TrayIconService(
                     onOpen: () => Dispatcher.Invoke(ShowFromTray),
                     onQuit: () => Dispatcher.Invoke(QuitFromTray)

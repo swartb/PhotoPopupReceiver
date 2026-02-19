@@ -1,168 +1,139 @@
 // PhotoReceiver.cs
-
-// This class handles the reception of photo data and related processing.
 using System;
-<<<<<<< HEAD
-using System.Diagnostics;
 using System.IO;
-=======
->>>>>>> 6f5470a66bde67bd6f654e554b2581334c64c41d
+using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Hosting;
 
 namespace PhotoPopupReceiver
 {
-    /// <summary>
-    /// Responsible for receiving incoming photo data from a remote sender and
-    /// orchestrating any follow-up processing (e.g. saving, format conversion).
-    /// </summary>
-    /// <remarks>
-    /// In the full implementation this class starts a lightweight HTTP endpoint
-    /// (via ASP.NET Core Kestrel) that accepts multipart POST requests containing
-    /// image payloads.  Each received image is validated against the shared secret
-    /// token defined in <see cref="AppSettings.Token"/>, saved to the directory
-    /// specified by <see cref="AppSettings.SaveFolder"/>, and then surfaced to the
-    /// UI layer through a callback delegate so that a popup can be shown and/or the
-    /// image can be copied to the clipboard.
-    /// </remarks>
-    public class PhotoReceiver
+    public sealed class PhotoReceiver : IAsyncDisposable
     {
-        // Stores the raw bytes of the most recently received photo.
-        private byte[]? photoData;
+        private IHost? _host;
 
-        /// <summary>
-        /// Initializes a new instance of <see cref="PhotoReceiver"/>.
-        /// Any one-time setup required before the listener is started (e.g. creating
-        /// the save directory) should be performed here.
-        /// </summary>
-        public PhotoReceiver()
+        public async Task StartAsync(AppSettings settings, Func<string, Task> onPhotoSaved)
         {
-<<<<<<< HEAD
+            if (_host is not null)
+                return;
+
+            if (settings is null) throw new ArgumentNullException(nameof(settings));
+            if (onPhotoSaved is null) throw new ArgumentNullException(nameof(onPhotoSaved));
+
+            Directory.CreateDirectory(settings.SaveFolder);
+
             _host = Host.CreateDefaultBuilder()
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
-                    webBuilder.UseKestrel()
+                    webBuilder
+                        .UseKestrel()
                         .UseUrls($"http://0.0.0.0:{settings.Port}")
-.Configure(app =>
-{
-    app.UseRouting();
+                        .Configure(app =>
+                        {
+                            app.UseRouting();
+                            app.UseEndpoints(endpoints =>
+                            {
+                                endpoints.MapPost("/push-photo", async context =>
+                                {
+                                    if (!IsAuthorized(context, settings, out var failureStatus, out var failureMessage))
+                                    {
+                                        context.Response.StatusCode = failureStatus;
+                                        context.Response.ContentType = "text/plain; charset=utf-8";
+                                        await context.Response.WriteAsync(failureMessage);
+                                        return;
+                                    }
 
-    app.UseEndpoints(endpoints =>
-    {
-        endpoints.MapPost("/push-photo", async context =>
-        {
-            var req = context.Request;
-            // AUTH
-            string auth = "";
-            if (context.Request.Headers.TryGetValue("X-Auth", out var hv) ||
-                context.Request.Headers.TryGetValue("X-Auth-Token", out hv))
-            {
-                auth = hv.ToString().Trim();
-            }
-            var expected = (settings.Password ?? "").Trim();
+                                    if (!context.Request.HasFormContentType)
+                                    {
+                                        context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                                        await context.Response.WriteAsync("multipart/form-data expected");
+                                        return;
+                                    }
 
+                                    var form = await context.Request.ReadFormAsync(context.RequestAborted);
+                                    var file = form.Files.GetFile("file");
+                                    if (file is null || file.Length == 0)
+                                    {
+                                        context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                                        await context.Response.WriteAsync("file missing");
+                                        return;
+                                    }
 
-            Debug.WriteLine($"AUTH require={settings.RequirePassword} got='{auth}' expected='{expected}'");
-            Debug.WriteLine($"EXPECTED: '{expected}'");
-            Debug.WriteLine($"AUTH: '{auth}'");
+                                    var dayFolder = Path.Combine(settings.SaveFolder, DateTime.Now.ToString("yyyy-MM-dd"));
+                                    Directory.CreateDirectory(dayFolder);
 
+                                    var ext = Path.GetExtension(file.FileName);
+                                    if (string.IsNullOrWhiteSpace(ext)) ext = ".jpg";
 
-            if (settings.RequirePassword)
-            {
-                if (string.IsNullOrWhiteSpace(expected))
-                {
-                    context.Response.StatusCode = 500;
-                    await context.Response.WriteAsync("Server misconfigured: password required but empty.");
-                    return;
-                }
+                                    var fileName = $"{DateTime.Now:HH-mm-ss_fff}_{Guid.NewGuid():N}{ext}";
+                                    var savePath = Path.Combine(dayFolder, fileName);
 
-                if (!string.Equals(auth, expected, StringComparison.Ordinal))
-                {
-                    context.Response.StatusCode = 401;
-                    context.Response.ContentType = "text/plain; charset=utf-8";
-                    await context.Response.WriteAsync($"Unauthorized. Got='{auth}' Expected='{expected}'");
-                    return;
-                }
-            }
+                                    await using (var fs = File.Create(savePath))
+                                    {
+                                        await file.CopyToAsync(fs, context.RequestAborted);
+                                    }
 
-            if (!req.HasFormContentType)
-            {
-                context.Response.StatusCode = 400;
-                await context.Response.WriteAsync("multipart/form-data expected");
-                return;
-            }
+                                    await onPhotoSaved(savePath);
 
-            var form = await req.ReadFormAsync();
-            var file = form.Files.GetFile("file");
-            if (file == null || file.Length == 0)
-            {
-                context.Response.StatusCode = 400;
-                await context.Response.WriteAsync("file missing");
-                return;
-            }
-
-            var dayFolder = Path.Combine(settings.SaveFolder, DateTime.Now.ToString("yyyy-MM-dd"));
-            Directory.CreateDirectory(dayFolder);
-
-            var ext = Path.GetExtension(file.FileName);
-            if (string.IsNullOrWhiteSpace(ext)) ext = ".jpg";
-
-            var fileName = DateTime.Now.ToString("HH-mm-ss_fff") + ext;
-            var savePath = Path.Combine(dayFolder, fileName);
-
-            await using (var fs = File.Create(savePath))
-                await file.CopyToAsync(fs);
-
-            await onSaved(savePath);
-
-            context.Response.StatusCode = 200;
-            await context.Response.WriteAsync("ok");
-        });
-    });
-});
+                                    context.Response.StatusCode = StatusCodes.Status200OK;
+                                    await context.Response.WriteAsync("ok");
+                                });
+                            });
+                        });
                 })
                 .Build();
 
             await _host.StartAsync();
-=======
-            // Initialization code can go here if needed.
->>>>>>> 6f5470a66bde67bd6f654e554b2581334c64c41d
         }
 
-        /// <summary>
-        /// Starts the HTTP listener and invokes <paramref name="onPhotoSaved"/> for each
-        /// received photo.  This stub exists so the project compiles while the full
-        /// Kestrel-based implementation is pending.
-        /// </summary>
-        public Task StartAsync(AppSettings settings, Func<string, Task> onPhotoSaved)
+        private static bool IsAuthorized(HttpContext context, AppSettings settings, out int failureStatus, out string failureMessage)
         {
-            // Full implementation will start an ASP.NET Core Kestrel listener here.
-            return Task.CompletedTask;
+            var token = context.Request.Query["token"].FirstOrDefault() ?? string.Empty;
+            if (!string.Equals(token, settings.Token, StringComparison.Ordinal))
+            {
+                failureStatus = StatusCodes.Status401Unauthorized;
+                failureMessage = "Unauthorized: invalid token.";
+                return false;
+            }
+
+            if (!settings.RequirePassword)
+            {
+                failureStatus = 0;
+                failureMessage = string.Empty;
+                return true;
+            }
+
+            var expected = (settings.Password ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(expected))
+            {
+                failureStatus = StatusCodes.Status401Unauthorized;
+                failureMessage = "Unauthorized: password required but not configured.";
+                return false;
+            }
+
+            var provided = (context.Request.Headers["X-Auth"].FirstOrDefault() ?? context.Request.Headers["X-Auth-Token"].FirstOrDefault() ?? string.Empty).Trim();
+            if (!string.Equals(provided, expected, StringComparison.Ordinal))
+            {
+                failureStatus = StatusCodes.Status401Unauthorized;
+                failureMessage = "Unauthorized: invalid password.";
+                return false;
+            }
+
+            failureStatus = 0;
+            failureMessage = string.Empty;
+            return true;
         }
 
-        /// <summary>
-        /// Accepts raw image bytes from an incoming request and triggers processing.
-        /// </summary>
-        /// <param name="data">
-        /// The raw byte payload of the received image (e.g. JPEG or PNG file data).
-        /// </param>
-        public void ReceivePhoto(byte[] data)
+        public async ValueTask DisposeAsync()
         {
-            // Store the received bytes so they are available to ProcessPhoto.
-            photoData = data;
-            // Delegate the actual work (saving, converting, notifying) to ProcessPhoto.
-            ProcessPhoto();
-        }
+            if (_host is null)
+                return;
 
-        /// <summary>
-        /// Processes the raw photo data stored in <see cref="photoData"/>.
-        /// Typical responsibilities include decoding the image, writing it to disk
-        /// inside <see cref="AppSettings.SaveFolder"/>, and invoking any registered
-        /// UI callbacks (e.g. showing a popup or copying to the clipboard).
-        /// </summary>
-        private void ProcessPhoto()
-        {
-            // Convert the photo data into a usable format or perform transformations.
-            // This is where the main logic for handling photos would be implemented.
+            await _host.StopAsync();
+            _host.Dispose();
+            _host = null;
         }
     }
 }
