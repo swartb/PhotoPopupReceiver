@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -28,13 +29,37 @@ namespace PhotoPopupReceiver
         endpoints.MapPost("/push-photo", async context =>
         {
             var req = context.Request;
-            var settingsToken = settings.Token;
-
-            var token = req.Query["token"].ToString();
-            if (!string.Equals(token, settingsToken, StringComparison.Ordinal))
+            // AUTH
+            string auth = "";
+            if (context.Request.Headers.TryGetValue("X-Auth", out var hv) ||
+                context.Request.Headers.TryGetValue("X-Auth-Token", out hv))
             {
-                context.Response.StatusCode = 401;
-                return;
+                auth = hv.ToString().Trim();
+            }
+            var expected = (settings.Password ?? "").Trim();
+
+
+            Debug.WriteLine($"AUTH require={settings.RequirePassword} got='{auth}' expected='{expected}'");
+            Debug.WriteLine($"EXPECTED: '{expected}'");
+            Debug.WriteLine($"AUTH: '{auth}'");
+
+
+            if (settings.RequirePassword)
+            {
+                if (string.IsNullOrWhiteSpace(expected))
+                {
+                    context.Response.StatusCode = 500;
+                    await context.Response.WriteAsync("Server misconfigured: password required but empty.");
+                    return;
+                }
+
+                if (!string.Equals(auth, expected, StringComparison.Ordinal))
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.ContentType = "text/plain; charset=utf-8";
+                    await context.Response.WriteAsync($"Unauthorized. Got='{auth}' Expected='{expected}'");
+                    return;
+                }
             }
 
             if (!req.HasFormContentType)

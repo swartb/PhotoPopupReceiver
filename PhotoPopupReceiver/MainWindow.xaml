@@ -41,6 +41,23 @@
        Height="240"
        Stretch="Uniform"
        Visibility="Collapsed"/>
+            <CheckBox x:Name="RequirePasswordCheckBox"
+          Content="Wachtwoord vereisen"
+          IsChecked="True"
+          Margin="0,10,0,6"
+          Checked="RequirePasswordChanged"
+          Unchecked="RequirePasswordChanged"/>
+
+            <PasswordBox x:Name="PasswordBox"
+             Margin="0,0,0,6"
+             PasswordChanged="PasswordChanged"/>
+
+            <TextBlock x:Name="PasswordErrorText"
+           Foreground="Tomato"
+           Visibility="Collapsed"
+           Text="Wachtwoord is verplicht als 'vereisen' aan staat."
+           Margin="0,0,0,10"/>
+
         </StackPanel>
     </Grid>
 </Window>

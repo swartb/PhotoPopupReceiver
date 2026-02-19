@@ -9,6 +9,8 @@ namespace PhotoPopupReceiver
         public string Token { get; set; } = "changeme";
         public bool AutoPopup { get; set; } = true;
         public bool AutoCopyToClipboard { get; set; } = false;
+        public bool RequirePassword { get; set; } = true;   // default veilig
+        public string Password { get; set; } = "";
 
         public string SaveFolder { get; set; } =
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "PhotoPopups");

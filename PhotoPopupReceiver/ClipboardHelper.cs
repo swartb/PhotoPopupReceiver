@@ -19,7 +19,7 @@ namespace PhotoPopupReceiver
             bmp.EndInit();
             bmp.Freeze(); // thread safe
 
-            Clipboard.SetImage(bmp);
+            System.Windows.Clipboard.SetImage(bmp);
         }
     }
 }
