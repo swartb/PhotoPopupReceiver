@@ -1,6 +1,9 @@
 // PhotoReceiver.cs
 
 // This class handles the reception of photo data and related processing.
+using System;
+using System.Threading.Tasks;
+
 namespace PhotoPopupReceiver
 {
     /// <summary>
@@ -19,7 +22,7 @@ namespace PhotoPopupReceiver
     public class PhotoReceiver
     {
         // Stores the raw bytes of the most recently received photo.
-        private byte[] photoData;
+        private byte[]? photoData;
 
         /// <summary>
         /// Initializes a new instance of <see cref="PhotoReceiver"/>.
@@ -29,6 +32,17 @@ namespace PhotoPopupReceiver
         public PhotoReceiver()
         {
             // Initialization code can go here if needed.
+        }
+
+        /// <summary>
+        /// Starts the HTTP listener and invokes <paramref name="onPhotoSaved"/> for each
+        /// received photo.  This stub exists so the project compiles while the full
+        /// Kestrel-based implementation is pending.
+        /// </summary>
+        public Task StartAsync(AppSettings settings, Func<string, Task> onPhotoSaved)
+        {
+            // Full implementation will start an ASP.NET Core Kestrel listener here.
+            return Task.CompletedTask;
         }
 
         /// <summary>
