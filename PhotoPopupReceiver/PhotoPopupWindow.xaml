@@ -8,21 +8,36 @@
         ShowInTaskbar="False"
         AllowsTransparency="True"
         Background="Transparent">
-
+    <!--
+        Outer container with rounded corners and a semi-transparent dark background.
+        AllowsTransparency="True" on the Window combined with Background="Transparent"
+        allows this Border's CornerRadius to produce a truly rounded-corner popup
+        without any square window chrome being visible.
+        The #EE prefix gives 93% opacity so underlying content is subtly visible.
+    -->
     <Border CornerRadius="14" Background="#EE1E1E1E" Padding="12">
         <Grid>
             <Grid.RowDefinitions>
+                <!-- Row 0: photo preview takes all available vertical space. -->
                 <RowDefinition Height="*" />
+                <!-- Row 1: action buttons sized to their content. -->
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
+            <!-- Photo preview area with a fully opaque black background to letterbox
+                 images that do not fill the available space. -->
             <Border CornerRadius="10" Background="#FF000000">
+                <!-- The received image stretched to fill the preview area uniformly,
+                     cropping if necessary to avoid distortion. -->
                 <Image x:Name="PreviewImage" Stretch="UniformToFill"/>
             </Border>
 
+            <!-- Action buttons aligned to the right, below the photo preview. -->
             <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
-                <Button Content="Kopieer" Padding="14,6" Margin="0,0,8,0" Click="Copy_Click"/>
-                <Button Content="Sluiten" Padding="14,6" Click="Close_Click"/>
+                <!-- Copies the displayed photo to the Windows clipboard. -->
+                <Button Content="Copy" Padding="14,6" Margin="0,0,8,0" Click="Copy_Click"/>
+                <!-- Dismisses and closes the popup window. -->
+                <Button Content="Close" Padding="14,6" Click="Close_Click"/>
             </StackPanel>
         </Grid>
     </Border>
