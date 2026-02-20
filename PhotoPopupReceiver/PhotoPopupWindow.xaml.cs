@@ -100,6 +100,12 @@ namespace PhotoPopupReceiver
             // Guard against the rare case where no image has been set yet.
             if (_currentPath is null) return;
             ClipboardHelper.CopyImageFileToClipboard(_currentPath);
+
+            TrayIconService.Current?.ShowBalloon(
+                LocalizationManager.GetString("CopiedToClipboardTitle"),
+                LocalizationManager.GetString("CopiedToClipboardMessage"));
+
+            Close();
         }
 
         /// <summary>

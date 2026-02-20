@@ -31,10 +31,49 @@
   <data name="CopyButton" xml:space="preserve">
     <value>Kopiëren</value>
   </data>
+  <data name="CopiedToClipboardTitle" xml:space="preserve">
+    <value>Foto Popup Ontvanger</value>
+  </data>
+  <data name="CopiedToClipboardMessage" xml:space="preserve">
+    <value>Gekopieerd naar klembord.</value>
+  </data>
   <data name="CloseButton" xml:space="preserve">
     <value>Sluiten</value>
   </data>
   <data name="LanguageLabel" xml:space="preserve">
     <value>Taal:</value>
+  </data>
+  <data name="EndpointGroupTitle" xml:space="preserve">
+    <value>Eindpunt</value>
+  </data>
+  <data name="OptionsGroupTitle" xml:space="preserve">
+    <value>Opties</value>
+  </data>
+  <data name="SecurityGroupTitle" xml:space="preserve">
+    <value>Beveiliging</value>
+  </data>
+  <data name="RequirePasswordCheckbox" xml:space="preserve">
+    <value>Wachtwoord vereisen (X-Auth header)</value>
+  </data>
+  <data name="PasswordLabel" xml:space="preserve">
+    <value>Wachtwoord:</value>
+  </data>
+  <data name="PasswordRequiredError" xml:space="preserve">
+    <value>Wachtwoord is verplicht als 'wachtwoord vereisen' aan staat.</value>
+  </data>
+  <data name="AuthLabel" xml:space="preserve">
+    <value>Auth:</value>
+  </data>
+  <data name="AuthRequired" xml:space="preserve">
+    <value>wachtwoord vereist (X-Auth header)</value>
+  </data>
+  <data name="AuthOpen" xml:space="preserve">
+    <value>open</value>
+  </data>
+  <data name="ShowPasswordTooltip" xml:space="preserve">
+    <value>Wachtwoord tonen</value>
+  </data>
+  <data name="HidePasswordTooltip" xml:space="preserve">
+    <value>Wachtwoord verbergen</value>
   </data>
 </root>

@@ -1,62 +1,83 @@
-// PhotoReceiver.cs
 using System;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace PhotoPopupReceiver
 {
-    public sealed class PhotoReceiver : IAsyncDisposable
+    public class PhotoReceiver
     {
         private IHost? _host;
 
-        public async Task StartAsync(AppSettings settings, Func<string, Task> onPhotoSaved)
+        public async Task StartAsync(AppSettings settings, Func<string, Task> onSaved)
         {
-            if (_host is not null)
-                return;
-
-            if (settings is null) throw new ArgumentNullException(nameof(settings));
-            if (onPhotoSaved is null) throw new ArgumentNullException(nameof(onPhotoSaved));
-
-            Directory.CreateDirectory(settings.SaveFolder);
+            File.AppendAllText("receiver.log", $"StartAsync called. Port={settings.Port}\n");
+            System.Diagnostics.Debug.WriteLine($"StartAsync called. Port={settings.Port}");
+            if (_host != null) return; // al gestart
 
             _host = Host.CreateDefaultBuilder()
-                .ConfigureWebHostDefaults(webBuilder =>
+                .ConfigureLogging(logging =>
                 {
-                    webBuilder
-                        .UseKestrel()
+                    logging.ClearProviders();
+                    logging.AddDebug();       // <-- zichtbaar in Output window
+                })
+                            .ConfigureWebHostDefaults(webBuilder =>
+                {
+                    webBuilder.UseKestrel()
                         .UseUrls($"http://0.0.0.0:{settings.Port}")
                         .Configure(app =>
                         {
                             app.UseRouting();
+
                             app.UseEndpoints(endpoints =>
                             {
                                 endpoints.MapPost("/push-photo", async context =>
                                 {
-                                    if (!IsAuthorized(context, settings, out var failureStatus, out var failureMessage))
+                                    var req = context.Request;
+
+                                    // AUTH via header
+                                    string auth = "";
+                                    if (req.Headers.TryGetValue("X-Auth", out var hv))
                                     {
-                                        context.Response.StatusCode = failureStatus;
-                                        context.Response.ContentType = "text/plain; charset=utf-8";
-                                        await context.Response.WriteAsync(failureMessage);
-                                        return;
+                                        auth = hv.ToString().Trim();
                                     }
 
-                                    if (!context.Request.HasFormContentType)
+                                    var expected = (settings.Password ?? "").Trim();
+
+                                    if (settings.RequirePassword)
                                     {
-                                        context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                                        if (string.IsNullOrWhiteSpace(expected))
+                                        {
+                                            context.Response.StatusCode = 500;
+                                            await context.Response.WriteAsync("Server misconfigured: password required but empty.");
+                                            return;
+                                        }
+
+                                        if (!string.Equals(auth, expected, StringComparison.Ordinal))
+                                        {
+                                            context.Response.StatusCode = 401;
+                                            context.Response.ContentType = "text/plain; charset=utf-8";
+                                            await context.Response.WriteAsync("Unauthorized.");
+                                            return;
+                                        }
+                                    }
+
+                                    if (!req.HasFormContentType)
+                                    {
+                                        context.Response.StatusCode = 400;
                                         await context.Response.WriteAsync("multipart/form-data expected");
                                         return;
                                     }
 
-                                    var form = await context.Request.ReadFormAsync(context.RequestAborted);
+                                    var form = await req.ReadFormAsync();
                                     var file = form.Files.GetFile("file");
-                                    if (file is null || file.Length == 0)
+                                    if (file == null || file.Length == 0)
                                     {
-                                        context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                                        context.Response.StatusCode = 400;
                                         await context.Response.WriteAsync("file missing");
                                         return;
                                     }
@@ -67,17 +88,15 @@ namespace PhotoPopupReceiver
                                     var ext = Path.GetExtension(file.FileName);
                                     if (string.IsNullOrWhiteSpace(ext)) ext = ".jpg";
 
-                                    var fileName = $"{DateTime.Now:HH-mm-ss_fff}_{Guid.NewGuid():N}{ext}";
+                                    var fileName = DateTime.Now.ToString("HH-mm-ss_fff") + ext;
                                     var savePath = Path.Combine(dayFolder, fileName);
 
                                     await using (var fs = File.Create(savePath))
-                                    {
-                                        await file.CopyToAsync(fs, context.RequestAborted);
-                                    }
+                                        await file.CopyToAsync(fs);
 
-                                    await onPhotoSaved(savePath);
+                                    await onSaved(savePath);
 
-                                    context.Response.StatusCode = StatusCodes.Status200OK;
+                                    context.Response.StatusCode = 200;
                                     await context.Response.WriteAsync("ok");
                                 });
                             });
@@ -86,51 +105,13 @@ namespace PhotoPopupReceiver
                 .Build();
 
             await _host.StartAsync();
+            File.AppendAllText("receiver.log", $"Host started OK. Url=http://0.0.0.0:{settings.Port}\n");
+            System.Diagnostics.Debug.WriteLine($"Host started OK. Url=http://0.0.0.0:{settings.Port}");
         }
 
-        private static bool IsAuthorized(HttpContext context, AppSettings settings, out int failureStatus, out string failureMessage)
+        public async Task StopAsync()
         {
-            var token = context.Request.Query["token"].FirstOrDefault() ?? string.Empty;
-            if (!string.Equals(token, settings.Token, StringComparison.Ordinal))
-            {
-                failureStatus = StatusCodes.Status401Unauthorized;
-                failureMessage = "Unauthorized: invalid token.";
-                return false;
-            }
-
-            if (!settings.RequirePassword)
-            {
-                failureStatus = 0;
-                failureMessage = string.Empty;
-                return true;
-            }
-
-            var expected = (settings.Password ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(expected))
-            {
-                failureStatus = StatusCodes.Status401Unauthorized;
-                failureMessage = "Unauthorized: password required but not configured.";
-                return false;
-            }
-
-            var provided = (context.Request.Headers["X-Auth"].FirstOrDefault() ?? context.Request.Headers["X-Auth-Token"].FirstOrDefault() ?? string.Empty).Trim();
-            if (!string.Equals(provided, expected, StringComparison.Ordinal))
-            {
-                failureStatus = StatusCodes.Status401Unauthorized;
-                failureMessage = "Unauthorized: invalid password.";
-                return false;
-            }
-
-            failureStatus = 0;
-            failureMessage = string.Empty;
-            return true;
-        }
-
-        public async ValueTask DisposeAsync()
-        {
-            if (_host is null)
-                return;
-
+            if (_host == null) return;
             await _host.StopAsync();
             _host.Dispose();
             _host = null;

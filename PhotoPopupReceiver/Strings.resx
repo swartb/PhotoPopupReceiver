@@ -31,10 +31,49 @@
   <data name="CopyButton" xml:space="preserve">
     <value>Copy</value>
   </data>
+  <data name="CopiedToClipboardTitle" xml:space="preserve">
+    <value>Photo Popup Receiver</value>
+  </data>
+  <data name="CopiedToClipboardMessage" xml:space="preserve">
+    <value>Copied to clipboard.</value>
+  </data>
   <data name="CloseButton" xml:space="preserve">
     <value>Close</value>
   </data>
   <data name="LanguageLabel" xml:space="preserve">
     <value>Language:</value>
+  </data>
+  <data name="EndpointGroupTitle" xml:space="preserve">
+    <value>Endpoint</value>
+  </data>
+  <data name="OptionsGroupTitle" xml:space="preserve">
+    <value>Options</value>
+  </data>
+  <data name="SecurityGroupTitle" xml:space="preserve">
+    <value>Security</value>
+  </data>
+  <data name="RequirePasswordCheckbox" xml:space="preserve">
+    <value>Require password (X-Auth header)</value>
+  </data>
+  <data name="PasswordLabel" xml:space="preserve">
+    <value>Password:</value>
+  </data>
+  <data name="PasswordRequiredError" xml:space="preserve">
+    <value>Password is required when 'require password' is enabled.</value>
+  </data>
+  <data name="AuthLabel" xml:space="preserve">
+    <value>Auth:</value>
+  </data>
+  <data name="AuthRequired" xml:space="preserve">
+    <value>password required (X-Auth header)</value>
+  </data>
+  <data name="AuthOpen" xml:space="preserve">
+    <value>open</value>
+  </data>
+  <data name="ShowPasswordTooltip" xml:space="preserve">
+    <value>Show password</value>
+  </data>
+  <data name="HidePasswordTooltip" xml:space="preserve">
+    <value>Hide password</value>
   </data>
 </root>

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Text.Json;
 
 namespace PhotoPopupReceiver
 {
@@ -10,20 +11,22 @@ namespace PhotoPopupReceiver
     /// </summary>
     public class AppSettings
     {
+        private static readonly JsonSerializerOptions JsonOptions = new()
+        {
+            WriteIndented = true
+        };
+
+        public static string SettingsDirectory { get; } =
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PhotoPopupReceiver");
+
+        public static string SettingsPath { get; } =
+            Path.Combine(SettingsDirectory, "settings.json");
+
         /// <summary>
         /// The TCP port on which the HTTP server listens for incoming photo upload requests.
         /// Must be a free port on the host machine. Default is <c>5055</c>.
         /// </summary>
         public int Port { get; set; } = 5055;
-
-        /// <summary>
-        /// A shared secret that the sender must supply as the <c>token</c> query parameter
-        /// (e.g. <c>?token=abc123</c>) to authenticate upload requests.
-        /// A new random GUID token is generated each time the application starts, so each
-        /// session has a unique, unguessable token.
-        /// The default value is a placeholder that is replaced at startup.
-        /// </summary>
-        public string Token { get; set; } = "changeme";
 
         /// <summary>
         /// When <see langword="true"/>, a floating popup notification window is automatically
@@ -40,7 +43,7 @@ namespace PhotoPopupReceiver
         /// Default is <see langword="false"/>.
         /// </summary>
         public bool AutoCopyToClipboard { get; set; } = false;
-        public bool RequirePassword { get; set; } = true;   // default veilig
+        public bool RequirePassword { get; set; } = false;
         public string Password { get; set; } = "";
 
         /// <summary>
@@ -51,5 +54,35 @@ namespace PhotoPopupReceiver
         /// </summary>
         public string SaveFolder { get; set; } =
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "PhotoPopups");
+
+        public static AppSettings Load()
+        {
+            try
+            {
+                if (!File.Exists(SettingsPath))
+                    return new AppSettings();
+
+                var json = File.ReadAllText(SettingsPath);
+                return JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
+            }
+            catch
+            {
+                return new AppSettings();
+            }
+        }
+
+        public void Save()
+        {
+            try
+            {
+                Directory.CreateDirectory(SettingsDirectory);
+                var json = JsonSerializer.Serialize(this, JsonOptions);
+                File.WriteAllText(SettingsPath, json);
+            }
+            catch
+            {
+                // ignore persistence failures
+            }
+        }
     }
 }
