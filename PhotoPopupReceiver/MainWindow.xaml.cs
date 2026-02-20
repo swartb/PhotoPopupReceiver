@@ -28,6 +28,7 @@ namespace PhotoPopupReceiver
 
         // The currently open popup notification window, or null if none is shown.
         private PhotoPopupWindow? _popup;
+        private TextPopupWindow? _textPopup;
         private TrayIconService? _tray;
         private bool _reallyClose = false;
         private bool _suppressMinimizeBalloon = false;
@@ -115,7 +116,7 @@ namespace PhotoPopupReceiver
                 }
 
                 var ip = GetLanIPv4() ?? "LAN-IP";
-                _endpointUrl = $"http://{ip}:{_settings.Port}/push-photo";
+                _endpointUrl = $"http://{ip}:{_settings.Port}";
 
                 ApplyLocalization();
 
@@ -125,7 +126,7 @@ namespace PhotoPopupReceiver
 
                 try
                 {
-                    await _receiver.StartAsync(_settings, OnPhotoSavedAsync);
+                    await _receiver.StartAsync(_settings, OnPhotoSavedAsync, OnTextReceivedAsync);
                 }
                 catch (Exception ex)
                 {
@@ -314,12 +315,37 @@ namespace PhotoPopupReceiver
                     ? LocalizationManager.GetString("AuthRequired")
                     : LocalizationManager.GetString("AuthOpen");
 
-                UrlText.Text = $"{LocalizationManager.GetString("EndpointLabel")}\n{_endpointUrl}\n\n" +
+                UrlText.Text = $"{LocalizationManager.GetString("EndpointLabel")}\n{_endpointUrl}/push-photo\n{_endpointUrl}/push-text\n\n" +
                                $"{LocalizationManager.GetString("AuthLabel")} {authValue}";
             }
         }
 
-             /// <summary>
+        /// <summary>
+        /// Callback invoked by <see cref="PhotoReceiver"/> after a text message has been received.
+        /// Shows a popup window with the received text if auto-popup is enabled.
+        /// </summary>
+        /// <param name="text">The received text message.</param>
+        /// <returns>A completed <see cref="Task"/>.</returns>
+        private Task OnTextReceivedAsync(string text)
+        {
+            if (_settings.AutoPopup)
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    // Close the previous text popup before opening a new one to avoid stacking.
+                    _textPopup?.Close();
+                    _textPopup = new TextPopupWindow();
+                    _textPopup.SetText(text);
+                    _textPopup.Show();
+                    // Position after Show() so ActualWidth/ActualHeight are available.
+                    _textPopup.Dispatcher.BeginInvoke(new Action(_textPopup.PositionBottomRight));
+                });
+            }
+
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
         /// Handles the language ComboBox selection change.
         /// Reads the <c>Tag</c> of the selected item (a two-letter ISO language code) and
         /// passes it to <see cref="LocalizationManager.SetLanguage"/>, which fires
